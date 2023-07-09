@@ -1,0 +1,81 @@
+using UnityEngine;
+using UnityEditor;
+
+public class TexturePacker : EditorWindow
+{
+    Texture2D redTexture;
+    Texture2D greenTexture;
+    Texture2D blueTexture;
+    Texture2D alphaTexture;
+    string outputDirectory = "";
+
+    [MenuItem("Window/Texture Packer")]
+    public static void ShowWindow()
+    {
+        GetWindow<TexturePacker>("Texture Packer");
+    }
+
+    void OnGUI()
+    {
+        GUILayout.Label("Pack textures into channels", EditorStyles.boldLabel);
+
+        redTexture = (Texture2D)EditorGUILayout.ObjectField("Red Channel Texture", redTexture, typeof(Texture2D), false);
+        greenTexture = (Texture2D)EditorGUILayout.ObjectField("Green Channel Texture", greenTexture, typeof(Texture2D), false);
+        blueTexture = (Texture2D)EditorGUILayout.ObjectField("Blue Channel Texture", blueTexture, typeof(Texture2D), false);
+        alphaTexture = (Texture2D)EditorGUILayout.ObjectField("Alpha Channel Texture", alphaTexture, typeof(Texture2D), false);
+
+        GUILayout.Space(20);
+        GUILayout.Label("Output Directory: " + outputDirectory, EditorStyles.wordWrappedLabel);
+        if (GUILayout.Button("Select Output Directory"))
+        {
+            string path = EditorUtility.OpenFolderPanel("Select Output Directory", "", "");
+            if (path.Length != 0)
+            {
+                outputDirectory = path;
+            }
+        }
+
+        GUILayout.Space(20);
+        if (GUILayout.Button("Pack Textures"))
+        {
+            if (redTexture == null || greenTexture == null || blueTexture == null || alphaTexture == null)
+            {
+                EditorUtility.DisplayDialog("Error", "Please assign all texture slots.", "OK");
+                return;
+            }
+
+            if (redTexture.width != greenTexture.width || redTexture.width != blueTexture.width || redTexture.width != alphaTexture.width ||
+                redTexture.height != greenTexture.height || redTexture.height != blueTexture.height || redTexture.height != alphaTexture.height)
+            {
+                EditorUtility.DisplayDialog("Error", "All textures should be the same size.", "OK");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(outputDirectory))
+            {
+                EditorUtility.DisplayDialog("Error", "Please select output directory.", "OK");
+                return;
+            }
+
+            Texture2D packedTexture = new Texture2D(redTexture.width, redTexture.height, TextureFormat.RGBA32, false);
+
+            for (int y = 0; y < packedTexture.height; y++)
+            {
+                for (int x = 0; x < packedTexture.width; x++)
+                {
+                    float r = redTexture.GetPixel(x, y).r;
+                    float g = greenTexture.GetPixel(x, y).r;
+                    float b = blueTexture.GetPixel(x, y).r;
+                    float a = alphaTexture.GetPixel(x, y).r;
+                    packedTexture.SetPixel(x, y, new Color(r, g, b, a));
+                }
+            }
+
+            packedTexture.Apply();
+
+            // Save the packed texture to the selected directory
+            System.IO.File.WriteAllBytes(outputDirectory + "/packedTexture.png", packedTexture.EncodeToPNG());
+            AssetDatabase.Refresh();
+        }
+    }
+}
